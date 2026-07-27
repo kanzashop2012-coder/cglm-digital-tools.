@@ -1,0 +1,73 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "config": {
+      ".read": "auth != null",
+      "zone": {
+        ".write": "auth != null",
+        "lat":     { ".validate": "newData.isNumber() && newData.val() >= -90  && newData.val() <= 90" },
+        "lng":     { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+        "radiusM": { ".validate": "newData.isNumber() && newData.val() >= 20 && newData.val() <= 5000" },
+        "maxAccM": { ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 1000" },
+        "strict":  { ".validate": "newData.isNumber()" },
+        "set":     { ".validate": "newData.isBoolean()" },
+        "$other":  { ".validate": false }
+      },
+      "rules": { ".write": "auth != null" }
+    },
+
+    "staff": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || newData.hasChildren(['name'])",
+        "name":    { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+        "dept":    { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "role":    { ".validate": "newData.isString() && newData.val().length <= 80" },
+        "nat":     { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "emp":     { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "note":    { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "lvl":     { ".validate": "newData.isNumber()" },
+        "band":    { ".validate": "newData.isNumber()" },
+        "active":  { ".validate": "newData.isBoolean()" },
+        "mustSet": { ".validate": "newData.isBoolean()" },
+        "pin":     { ".validate": "newData.isString() && newData.val().length == 4" },
+        "$other":  { ".validate": false }
+      }
+    },
+
+    "logs": {
+      ".read": "auth != null",
+      "$date": {
+        "$entry": {
+
+          // Create only: data.exists() blocks edits, newData.exists() blocks deletes.
+          ".write": "auth != null && !data.exists() && newData.exists()",
+
+          ".validate": "newData.hasChildren(['staffId','name','type','ts','lat','lng','acc','dist']) && root.child('staff').child(newData.child('staffId').val()).exists() && newData.child('ts').val() >= now - 900000 && newData.child('ts').val() <= now + 900000",
+
+          "staffId": { ".validate": "newData.isString()" },
+          "name":    { ".validate": "newData.isString() && newData.val().length <= 120" },
+          "dept":    { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "role":    { ".validate": "newData.isString() && newData.val().length <= 80" },
+          "shift":   { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "reason":  { ".validate": "newData.isString() && newData.val().length <= 60" },
+          "type":    { ".validate": "newData.val() == 'SIGN_IN' || newData.val() == 'SIGN_OUT' || newData.val() == 'BREAK_START' || newData.val() == 'BREAK_END'" },
+          "ts":      { ".validate": "newData.isNumber()" },
+          "lat":     { ".validate": "newData.isNumber() && newData.val() >= -90  && newData.val() <= 90" },
+          "lng":     { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+          "acc":     { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "dist":    { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "inside":  { ".validate": "newData.isBoolean()" },
+          "weak":    { ".validate": "newData.isBoolean()" },
+          "lateMin": { ".validate": "newData.isNumber()" },
+          "tzOff":   { ".validate": "newData.isNumber()" },
+          "tz":      { ".validate": "newData.isString() && newData.val().length <= 60" },
+          "$other":  { ".validate": false }
+        }
+      }
+    }
+  }
+}
