@@ -1,0 +1,60 @@
+{
+  "rules": {
+    "dutylog": {
+      ".read": "auth != null",
+
+      "settings": {
+        ".write": "auth != null",
+        "zone": {
+          ".validate": "newData.hasChildren(['lat','lng','radius'])",
+          "lat":    { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+          "lng":    { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+          "radius": { ".validate": "newData.isNumber() && newData.val() >= 20 && newData.val() <= 2000" },
+          "$other": { ".validate": false }
+        },
+        "managerPin": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}$/)" },
+        "$other": { ".validate": false }
+      },
+
+      "roster": {
+        ".write": "auth != null",
+        "$pin": {
+          ".validate": "newData.hasChildren(['pin','name','group']) || !newData.exists()",
+          "pin":      { ".validate": "newData.isString() && newData.val() == $pin" },
+          "staffId":  { ".validate": "newData.isString()" },
+          "name":     { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 120" },
+          "position": { ".validate": "newData.isString() && newData.val().length < 120" },
+          "group":    { ".validate": "newData.isString()" },
+          "active":   { ".validate": "newData.isBoolean()" },
+          "$other":   { ".validate": false }
+        }
+      },
+
+      "log": {
+        "$day": {
+          "$entry": {
+            "// append only": "an entry may be created but never edited or deleted from the app",
+            ".write": "auth != null && !data.exists() && newData.exists()",
+            ".validate": "newData.hasChildren(['pin','name','action','ts','distance','inZone'])",
+            "pin":      { ".validate": "newData.isString()" },
+            "staffId":  { ".validate": "newData.isString()" },
+            "name":     { ".validate": "newData.isString()" },
+            "position": { ".validate": "newData.isString()" },
+            "group":    { ".validate": "newData.isString()" },
+            "action":   { ".validate": "newData.val() == 'in' || newData.val() == 'out'" },
+            "ts":       { ".validate": "newData.isNumber() && newData.val() <= now + 120000" },
+            "lat":      { ".validate": "newData.isNumber()" },
+            "lng":      { ".validate": "newData.isNumber()" },
+            "accuracy": { ".validate": "newData.isNumber()" },
+            "distance": { ".validate": "newData.isNumber()" },
+            "inZone":   { ".validate": "newData.isBoolean()" },
+            "tzOffset": { ".validate": "newData.isNumber()" },
+            "device":   { ".validate": "newData.isString() && newData.val().length <= 160" },
+            "$other":   { ".validate": false }
+          }
+        }
+      }
+    },
+    "$rest": { ".read": false, ".write": false }
+  }
+}
