@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#183B4F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>CGLM Duty Log — Geo Sign-In</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+<meta name="application-name" content="Duty Log">
+<meta name="apple-mobile-web-app-title" content="Duty Log">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Geofenced sign-in and sign-out for the CGLM Front Office.">
+<style>
+:root{
+  --maroon:#731529;
+  --maroon-dk:#57101F;
+  --teal:#183B4F;
+  --teal-dk:#0F2836;
+  --gold:#D4BD87;
+  --cream:#F4F1E9;
+  --ink:#1B1B1B;
+  --muted:#6B6B6B;
+  --line:#DCD6C9;
+  --ok:#1E7A4C;
+  --warn:#B5761B;
+  --bad:#A3202F;
+  --card:#FFFFFF;
+  --shadow:0 2px 10px rgba(24,59,79,.10);
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--cream);
+  color:var(--ink);
+  font-family:Calibri,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.45;
+  padding-bottom:calc(78px + env(safe-area-inset-bottom));
+}
+h1,h2,h3,.serif{font-family:Cambria,Georgia,"Times New Roman",serif;font-weight:700;letter-spacing:.2px}
+.hide{display:none !important}
+
+/* Header */
+header{
+  position:sticky;top:0;z-index:50;
+  background:linear-gradient(180deg,var(--teal),var(--teal-dk));
+  color:var(--cream);
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  box-shadow:0 2px 12px rgba(0,0,0,.18);
+}
+.hrow{display:flex;align-items:center;gap:10px}
+.brand{flex:1;min-width:0}
+.brand h1{margin:0;font-size:17px;line-height:1.15;color:#fff}
+.brand small{display:block;color:var(--gold);font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase}
+.clock{text-align:right;font-variant-numeric:tabular-nums}
+.clock b{display:block;font-size:19px;font-family:Cambria,Georgia,serif;color:#fff}
+.clock span{font-size:11px;color:var(--gold)}
+
+/* Layout */
+main{padding:14px 14px 10px;max-width:640px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:15px;color:var(--teal);text-transform:uppercase;letter-spacing:1px}
+.sub{color:var(--muted);font-size:13px}
+
+/* GPS dial */
+.geo{display:flex;gap:14px;align-items:center}
+.dial{width:104px;height:104px;flex:0 0 104px;position:relative}
+.dial svg{transform:rotate(-90deg)}
+.dial .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.dial .mid b{font-family:Cambria,Georgia,serif;font-size:20px;line-height:1}
+.dial .mid span{font-size:10px;color:var(--muted);letter-spacing:.6px}
+.geo-txt{flex:1;min-width:0}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.p-ok{background:#E4F2EA;color:var(--ok)}
+.p-bad{background:#F8E4E6;color:var(--bad)}
+.p-warn{background:#FBF0DC;color:var(--warn)}
+.p-idle{background:#ECE9E0;color:var(--muted)}
+.kv{font-size:13px;color:var(--muted);margin-top:6px}
+.kv b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* Status band */
+.band{border-radius:var(--r);padding:12px 14px;color:#fff;margin-bottom:12px;box-shadow:var(--shadow)}
+.band.off{background:linear-gradient(135deg,#5C5C5C,#3D3D3D)}
+.band.on{background:linear-gradient(135deg,var(--maroon),var(--maroon-dk))}
+.band.brk{background:linear-gradient(135deg,#B5761B,#8A5811)}
+.band.done{background:linear-gradient(135deg,var(--teal),var(--teal-dk))}
+.band .who{font-family:Cambria,Georgia,serif;font-size:19px;margin:0}
+.band .st{font-size:13px;opacity:.92;margin-top:2px}
+.band .meta{font-size:12px;opacity:.8;margin-top:6px;font-variant-numeric:tabular-nums}
+
+/* Controls */
+label.lbl{display:block;font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:0 0 5px}
+select,input,textarea{
+  width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;
+  background:#fff;font-size:16px;font-family:inherit;color:var(--ink)
+}
+select:focus,input:focus,textarea:focus,button:focus-visible{outline:3px solid rgba(212,189,135,.75);outline-offset:1px}
+.row{display:flex;gap:10px}
+.row>*{flex:1;min-width:0}
+.btn{
+  display:block;width:100%;padding:15px 12px;border:0;border-radius:12px;
+  font-size:16px;font-weight:700;font-family:inherit;letter-spacing:.4px;cursor:pointer;
+  background:var(--maroon);color:#fff;box-shadow:var(--shadow)
+}
+.btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+.btn.alt{background:var(--teal)}
+.btn.gold{background:var(--gold);color:var(--teal-dk)}
+.btn.ghost{background:#fff;color:var(--teal);border:1px solid var(--line);box-shadow:none}
+.btn.sm{padding:10px;font-size:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* Timeline */
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:flex;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.tl li:last-child{border-bottom:0}
+.tl .t{width:56px;flex:0 0 56px;font-variant-numeric:tabular-nums;color:var(--teal);font-weight:700}
+.tl .d{flex:1;min-width:0}
+.tl .d small{display:block;color:var(--muted);font-size:12px}
+.dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:0 0 9px}
+.d-in{background:var(--ok)}.d-out{background:var(--bad)}.d-brk{background:var(--warn)}.d-ret{background:var(--teal)}
+
+/* Board rows */
+.rowitem{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.rowitem:last-child{border-bottom:0}
+.rowitem .nm{flex:1;min-width:0}
+.rowitem .nm b{display:block;font-size:15px}
+.rowitem .nm small{color:var(--muted);font-size:12px}
+.tag{font-size:10.5px;padding:2px 7px;border-radius:5px;background:#ECE9E0;color:var(--muted);font-weight:700;letter-spacing:.5px}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+.tabs button{flex:0 0 auto;padding:8px 14px;border:1px solid var(--line);background:#fff;border-radius:999px;font:inherit;font-size:13px;color:var(--teal);cursor:pointer}
+.tabs button.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+/* Bottom nav */
+nav.bot{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;
+  background:#fff;border-top:1px solid var(--line);
+  display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+  box-shadow:0 -2px 12px rgba(24,59,79,.08)
+}
+nav.bot button{flex:1;background:none;border:0;padding:8px 4px;font:inherit;font-size:11px;color:var(--muted);cursor:pointer;letter-spacing:.4px}
+nav.bot button b{display:block;font-size:19px;line-height:1.1;font-weight:400}
+nav.bot button.on{color:var(--maroon);font-weight:700}
+
+/* Modal + toast */
+.mask{position:fixed;inset:0;background:rgba(15,40,54,.55);z-index:80;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--cream);width:100%;max-width:640px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
+.sheet h3{margin:0 0 4px;font-size:18px;color:var(--teal)}
+#toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:99;background:var(--teal-dk);color:#fff;padding:11px 16px;border-radius:10px;font-size:14px;max-width:88vw;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+.banner{background:#FBF0DC;border:1px solid #E7D2A6;color:#7A5410;padding:9px 12px;border-radius:10px;font-size:13px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--teal);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+.scroll{overflow-x:auto}
+@media (prefers-reduced-motion:no-preference){
+  .band,.card{animation:rise .25s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <div class="brand">
+      <small>Centara Grand Lagoon Maldives</small>
+      <h1>Duty Log · Geo Sign-In</h1>
+    </div>
+    <button id="btnInstall" class="hide" style="flex:0 0 auto;background:var(--gold);color:var(--teal-dk);border:0;border-radius:999px;padding:7px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer">Install</button>
+    <div class="clock"><b id="clk">--:--</b><span id="clkd">—</span><span id="netDot" style="font-size:10px;color:var(--gold)"></span></div>
+  </div>
+</header>
+
+<main>
+  <div id="modeBanner" class="banner hide"></div>
+
+  <!-- ============ STAFF VIEW ============ -->
+  <section id="v-staff">
+    <div id="band" class="band off">
+      <p class="who" id="bandWho">Select your name</p>
+      <div class="st" id="bandSt">Not signed in</div>
+      <div class="meta" id="bandMeta"></div>
+    </div>
+
+    <div class="card">
+      <div class="geo">
+        <div class="dial">
+          <svg width="104" height="104" viewBox="0 0 104 104">
+            <circle cx="52" cy="52" r="45" fill="none" stroke="#ECE9E0" stroke-width="10"/>
+            <circle id="ring" cx="52" cy="52" r="45" fill="none" stroke="#B0B0B0" stroke-width="10"
+                    stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283"/>
+          </svg>
+          <div class="mid"><b id="dialNum">—</b><span id="dialUnit">metres</span></div>
+        </div>
+        <div class="geo-txt">
+          <span id="fencePill" class="pill p-idle">Locating…</span>
+          <div class="kv">Front Office zone · radius <b id="radTxt">—</b> m</div>
+          <div class="kv">GPS accuracy <b id="accTxt">—</b> m</div>
+          <div class="kv" id="fixTxt">Waiting for a fix…</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost sm" id="btnRefresh">Refresh location</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Who is on shift</h2>
+      <label class="lbl" for="staffSel">Your name</label>
+      <select id="staffSel"><option value="">— select —</option></select>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label class="lbl" for="pinIn">4-digit PIN</label>
+          <input id="pinIn" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+        </div>
+        <div>
+          <label class="lbl" for="shiftSel">Shift</label>
+          <select id="shiftSel"></select>
+        </div>
+      </div>
+      <button class="btn ghost sm" id="pinChange" style="margin-top:10px">Change my PIN</button>
+    </div>
+
+    <div class="card">
+      <h2>Record</h2>
+      <div id="exNote" class="banner hide" style="margin-bottom:12px">You are outside the Front Office zone. You can still record — it goes to the manager's exception list with your position.</div>
+      <button class="btn" id="aSignIn">Sign in — start shift</button>
+      <div class="grid2" style="margin-top:10px">
+        <button class="btn alt" id="aBreakOut">Step out</button>
+        <button class="btn gold" id="aBreakIn">Back on duty</button>
+      </div>
+      <button class="btn ghost" id="aSignOut" style="margin-top:10px">Sign out — end shift</button>
+      <p class="sub" style="margin:10px 0 0">Every action stores your GPS point, accuracy and distance from the Front Office. Stepping out and returning is expected — leaving without a record is what gets flagged. Recording from outside the zone is allowed and goes on the exception list.</p>
+    </div>
+
+    <div class="card">
+      <h2>My day</h2>
+      <ul class="tl" id="myTl"><li><div class="d sub">Nothing recorded yet today.</div></li></ul>
+    </div>
+  </section>
+
+  <!-- ============ BOARD VIEW ============ -->
+  <section id="v-board" class="hide">
+    <div class="card">
+      <h2>On duty now</h2>
+      <div id="boardOn"><p class="sub">Nobody signed in.</p></div>
+    </div>
+    <div class="card">
+      <h2>Stepped out</h2>
+      <div id="boardBrk"><p class="sub">Nobody out.</p></div>
+    </div>
+    <div class="card">
+      <h2>Signed off today</h2>
+      <div id="boardOff"><p class="sub">No completed shifts yet.</p></div>
+    </div>
+    <div class="card">
+      <h2>Exceptions</h2>
+      <div id="boardExc"><p class="sub">Nothing to review.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ MANAGER VIEW ============ -->
+  <section id="v-mgr" class="hide">
+    <div id="mgrLock" class="card">
+      <h2>Manager access</h2>
+      <label class="lbl" for="mgrPin">Manager PIN</label>
+      <input id="mgrPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••">
+      <button class="btn" id="mgrGo" style="margin-top:10px">Unlock</button>
+    </div>
+
+    <div id="mgrBody" class="hide">
+      <div class="tabs">
+        <button data-mt="log" class="on">Log</button>
+        <button data-mt="roster">Roster</button>
+        <button data-mt="zone">Zone</button>
+        <button data-mt="rules">Rules</button>
+      </div>
+
+      <div id="mt-log">
+        <div class="card">
+          <h2>Movement log</h2>
+          <label class="lbl" for="logDate">Business date</label>
+          <input id="logDate" type="date">
+          <div class="grid2" style="margin-top:10px">
+            <button class="btn alt sm" id="btnCsvLog">Export log CSV</button>
+            <button class="btn ghost sm" id="btnCsvSum">Export summary CSV</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Attendance summary</h2>
+          <div class="scroll"><table id="tblSum"><thead><tr><th>Name</th><th>In</th><th>Out</th><th>Break</th><th>Hrs</th><th>Flags</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>Every movement</h2>
+          <div class="scroll"><table id="tblLog"><thead><tr><th>Time</th><th>Name</th><th>Event</th><th>Dist</th><th>Acc</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="mt-roster" class="hide">
+        <div class="card">
+          <h2>Add team member</h2>
+          <label class="lbl" for="rName">Full name</label>
+          <input id="rName" placeholder="e.g. Ahmed Nashid">
+          <label class="lbl" for="rRole" style="margin-top:10px">Position</label>
+          <input id="rRole" list="roleList" placeholder="e.g. GRO / Front Desk Agent">
+          <datalist id="roleList">
+            <option>Front Office Manager</option><option>Duty Manager</option>
+            <option>Front Office Supervisor</option><option>Night Supervisor</option>
+            <option>GRO / Front Desk Agent</option><option>Butler</option>
+            <option>Bell Attendant</option><option>Airport Host</option><option>Night Audit</option>
+          </datalist>
+          <div class="row" style="margin-top:10px">
+            <div><label class="lbl" for="rDept">Department</label>
+              <select id="rDept">
+                <option value="FO 101">FO 101 — Front Office</option>
+                <option value="HK 102">HK 102 — Housekeeping</option>
+                <option value="RSV 103">RSV 103 — Reservations</option>
+              </select></div>
+            <div><label class="lbl" for="rBand">Salary band</label><input id="rBand" inputmode="numeric" placeholder="10"></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div><label class="lbl" for="rNat">Nationality</label><input id="rNat" placeholder="Maldivian"></div>
+            <div><label class="lbl" for="rPin">PIN</label><input id="rPin" inputmode="numeric" maxlength="4" placeholder="4 digits"></div>
+          </div>
+          <button class="btn" id="rAdd" style="margin-top:10px">Add to roster</button>
+          <p class="sub" style="margin:8px 0 0">Band decides which section they appear under: 13+ Management, 11–12 Supervisors, 9–10 Guest Relations, below 9 Bell Desk.</p>
+        </div>
+        <div class="card">
+          <h2>Roster</h2>
+          <input id="rSearch" placeholder="Search name, position or nationality">
+          <div class="row" style="margin-top:10px;align-items:center">
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)">
+              <input type="checkbox" id="rShowPin" style="width:auto"> Show PINs
+            </label>
+            <button class="btn ghost sm" id="rImport" style="flex:0 0 auto;width:auto;padding:8px 12px">Import establishment</button>
+          </div>
+          <div id="rosterList" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div id="mt-zone" class="hide">
+        <div class="card">
+          <h2>Front Office zone</h2>
+          <p class="sub" id="zNow">—</p>
+          <p class="sub" style="margin-top:8px">Stand at the Front Office desk and capture the centre for the most accurate result. A point taken off a map is usually good to within a few metres, which the 120 m radius absorbs comfortably.</p>
+          <button class="btn" id="zSet" style="margin-top:10px">Use my current position as centre</button>
+          <button class="btn ghost" id="zReset" style="margin-top:8px">Restore the recorded Front Office point</button>
+          <div class="row" style="margin-top:12px">
+            <div><label class="lbl" for="zLat">Latitude</label><input id="zLat" inputmode="decimal"></div>
+            <div><label class="lbl" for="zLng">Longitude</label><input id="zLng" inputmode="decimal"></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div><label class="lbl" for="zRad">Radius (m)</label><input id="zRad" inputmode="numeric" value="120"></div>
+            <div><label class="lbl" for="zAcc">Max GPS error (m)</label><input id="zAcc" inputmode="numeric" value="75"></div>
+          </div>
+          <label class="lbl" for="zStrict" style="margin-top:10px">Edge handling</label>
+          <select id="zStrict">
+            <option value="0">Lenient — distance must be inside the radius</option>
+            <option value="1">Strict — distance plus GPS error must be inside</option>
+          </select>
+          <button class="btn alt" id="zSave" style="margin-top:12px">Save zone</button>
+        </div>
+      </div>
+
+      <div id="mt-rules" class="hide">
+        <div class="card">
+          <h2>Shift windows</h2>
+          <div id="shiftRules"></div>
+          <button class="btn alt" id="ruSave" style="margin-top:12px">Save rules</button>
+        </div>
+        <div class="card">
+          <h2>Break allowance</h2>
+          <label class="lbl" for="brkMax">Maximum single break (minutes)</label>
+          <input id="brkMax" inputmode="numeric" value="60">
+          <label class="lbl" for="brkTot" style="margin-top:10px">Maximum total break per shift (minutes)</label>
+          <input id="brkTot" inputmode="numeric" value="90">
+          <label class="lbl" for="mgrPinNew" style="margin-top:10px">Manager PIN</label>
+          <input id="mgrPinNew" inputmode="numeric" maxlength="6" value="2468">
+          <button class="btn alt" id="brkSave" style="margin-top:12px">Save</button>
+        </div>
+        <div class="card">
+          <h2>Connection</h2>
+          <p class="sub" id="connTxt"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="bot">
+  <button data-v="staff" class="on"><b>◉</b>Sign in</button>
+  <button data-v="board"><b>▤</b>Board</button>
+  <button data-v="mgr"><b>⚙</b>Manager</button>
+</nav>
+
+<div id="modalHost"></div>
+<div id="toast" class="hide"></div>
+
+<script>
+/* ============================================================
+   CGLM DUTY LOG — Geofenced Front Office attendance
+   v1.5.0  |  installable PWA  |  Firebase RTDB or demo memory
+   Outside-zone records are permitted and flagged as exceptions.
+   Roster seeded with the FO 101 2026 establishment.
+   Zone centred on the Front Office desk, 4.311059 / 73.348878.
+   Clock reads the phone's own time and timezone.
+   Fix: roster now seeds when storage returns an empty object.
+   Installable: manifest + service worker, offline shell, coarse-fix fallback.
+   ============================================================ */
+const APP = { name:'CGLM Duty Log', version:'1.5.0' };
+
+/* ---------- 1. FIREBASE CONFIG -------------------------------
+   Paste the config from your Firebase project, then redeploy.
+   Leave blank to run in demo mode (data resets on reload).      */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB...",
+  authDomain: "cglm-duty-log.firebaseapp.com",
+  databaseURL: "https://cglm-duty-log-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "cglm-duty-log",
+  storageBucket: "cglm-duty-log.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abc123"
+};
+const LIVE = !!(FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.apiKey);
+
+/* ---------- 2. Defaults ---------- */
+
+/* Front Office desk — Centara Grand Lagoon Maldives. Everything is measured from here. */
+const FO_CENTRE = { lat:4.311059, lng:73.348878, label:'Front Office · CGLM' };
+
+const DEFAULTS = {
+  zone:{ lat:FO_CENTRE.lat, lng:FO_CENTRE.lng, radiusM:120, maxAccM:75, strict:0, set:true },
+  rules:{
+    shifts:[
+      {id:'morning', label:'Morning',  start:'08:00', end:'17:00', graceMin:10, latestOut:'18:30'},
+      {id:'evening', label:'Evening',  start:'15:00', end:'23:00', graceMin:10, latestOut:'00:30'},
+      {id:'mid',     label:'Mid / Split', start:'12:00', end:'21:00', graceMin:10, latestOut:'22:00'},
+      {id:'night',   label:'Night',    start:'23:00', end:'08:00', graceMin:10, latestOut:'09:00'}
+    ],
+    breakMaxMin:60, breakTotalMin:90, mgrPin:'2468'
+  }
+};
+
+/* ---------- 2b. FO 101 establishment (2026 manning) --------------
+   PIN convention: salary band + sequence. Band 14 -> 14xx, band 12 -> 12xx,
+   band 10 -> 10xx, band 8 -> 08xx. Anyone can change their own PIN in the app. */
+const SEED_ROSTER = [
+  {id:'fo01', name:'Ibrahim Naeem',                            role:'Duty Manager',                         nat:'Maldivian',  emp:'Local', lvl:4, band:14, pin:'1401'},
+  {id:'fo02', name:'Monette Claudine Yambao',                  role:'Duty Manager',                         nat:'Filipino',   emp:'Expat', lvl:4, band:14, pin:'1402'},
+  {id:'fo03', name:'Hussain Fahmee',                           role:'Duty Manager',                         nat:'Maldivian',  emp:'Local', lvl:4, band:14, pin:'1403'},
+  {id:'fo04', name:'Nikko Ulysses Yu Olleres',                 role:'Front Office Supervisor',              nat:'Filipino',   emp:'Expat', lvl:3, band:12, pin:'1201'},
+  {id:'fo05', name:'Ashfag Hassan Latheef',                    role:'Front Office Supervisor',              nat:'Maldivian',  emp:'Local', lvl:3, band:12, pin:'1202'},
+  {id:'fo06', name:'Abdulla Rafeeu',                           role:'Night Supervisor',                     nat:'Maldivian',  emp:'Local', lvl:3, band:12, pin:'1203'},
+  {id:'fo07', name:'Harshita Kotian',                          role:'GRO / Front Desk Agent — Indian',      nat:'Indian',     emp:'Expat', lvl:2, band:10, pin:'1001'},
+  {id:'fo08', name:'Zuhro Dodkhudoeva',                        role:'GRO / Front Desk Agent — Russian',     nat:'Tajikistan', emp:'Expat', lvl:2, band:10, pin:'1002'},
+  {id:'fo09', name:'Thanaporn Dechsurapong',                   role:'GRO / Front Desk Agent — Thai',        nat:'Thai',       emp:'Expat', lvl:2, band:10, pin:'1003'},
+  {id:'fo10', name:'Paskuwalhandi Donald Mahinda Karunarathna',role:'GRO / Front Desk Agent — Thai',        nat:'Sri Lankan', emp:'Expat', lvl:2, band:10, pin:'1004'},
+  {id:'fo11', name:'Xinping He',                               role:'GRO / Front Desk Agent — Chinese',     nat:'Chinese',    emp:'Expat', lvl:2, band:10, pin:'1005', active:false, note:'Offer sent — activate on arrival'},
+  {id:'fo12', name:'Batyr Aldiyar Asetuly',                    role:'GRO / Front Desk Agent — Russian',     nat:'Kazakh',     emp:'Expat', lvl:2, band:10, pin:'1006'},
+  {id:'fo13', name:'Aishath Shaiha Saihan',                    role:'GRO / Front Desk Agent',               nat:'Maldivian',  emp:'Local', lvl:2, band:10, pin:'1007'},
+  {id:'fo14', name:'Hassaan Hassan',                           role:'GRO / Front Desk Agent',               nat:'Maldivian',  emp:'Local', lvl:2, band:10, pin:'1008'},
+  {id:'fo15', name:'Mohamed Rawah Rushdee',                    role:'GRO / Front Desk Agent',               nat:'Maldivian',  emp:'Local', lvl:2, band:10, pin:'1009'},
+  {id:'fo16', name:'Inan Saeed',                               role:'GRO / Front Desk Agent',               nat:'Maldivian',  emp:'Local', lvl:2, band:10, pin:'1010'},
+  {id:'fo17', name:'Nasaim Nasym',                             role:'GRO / Front Desk Agent',               nat:'Maldivian',  emp:'Local', lvl:2, band:10, pin:'1011'},
+  {id:'fo18', name:'Ali Saeed',                                role:'Bell Attendant',                       nat:'Maldivian',  emp:'Local', lvl:1, band:8,  pin:'0801'},
+  {id:'fo19', name:'Mohamed Maeesh',                           role:'Bell Attendant',                       nat:'Maldivian',  emp:'Local', lvl:1, band:8,  pin:'0802'},
+  {id:'fo20', name:'Hussain Azwar Shameem',                    role:'Bell Attendant',                       nat:'Maldivian',  emp:'Local', lvl:1, band:8,  pin:'0803'},
+  {id:'fo21', name:'Hussain Sharih',                           role:'Bell Attendant',                       nat:'Maldivian',  emp:'Local', lvl:1, band:8,  pin:'0804'},
+  {id:'fo22', name:'Imran Hossain Ifti',                       role:'Bell Attendant',                       nat:'Bangladeshi',emp:'Expat', lvl:1, band:8,  pin:'0805'}
+].map(s=>({dept:'FO 101', active:true, ...s}));
+
+/* Budgeted but unfilled — shown for headcount only, never on the sign-in list. */
+const VACANCIES = [
+  {role:'Front Office Manager',  band:15, note:'Hire in 2026 · Local'},
+  {role:'GRO / Front Desk Agent',band:10, note:'Hire in Festive'},
+  {role:'Bell Attendant',        band:8,  note:'Hire in Festive'}
+];
+const SECTIONS = [
+  {key:'mgmt', label:'Management',      test:s=>s.band>=13},
+  {key:'sup',  label:'Supervisors',     test:s=>s.band>=11 && s.band<13},
+  {key:'gro',  label:'Guest Relations', test:s=>s.band>=9  && s.band<11},
+  {key:'bell', label:'Bell Desk',       test:s=>s.band<9},
+  {key:'oth',  label:'Other',           test:()=>true}
+];
+const sectionOf = s => (SECTIONS.find(x=>x.test({band:+s.band||0}))||SECTIONS[4]).label;
+
+/* ---------- 3. Tiny store (Firebase RTDB or memory) ---------- */
+const Store = (()=>{
+  let db=null, mem={config:{}, staff:{}, logs:{}, sessions:{}}, subs={};
+  function memGet(path){
+    return path.split('/').filter(Boolean).reduce((o,k)=> (o&&o[k]!==undefined)?o[k]:null, mem);
+  }
+  function memSet(path,val){
+    const ks=path.split('/').filter(Boolean); let o=mem;
+    ks.slice(0,-1).forEach(k=>{ if(typeof o[k]!=='object'||o[k]===null) o[k]={}; o=o[k]; });
+    o[ks[ks.length-1]]=val;
+    Object.keys(subs).forEach(p=>{ if(path.startsWith(p)||p.startsWith(path)) subs[p].forEach(fn=>fn(memGet(p))); });
+  }
+  return {
+    async init(){
+      if(!LIVE) return false;
+      await loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js');
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.database();
+      return true;
+    },
+    on(path, cb){
+      if(db) db.ref(path).on('value', s=>cb(s.val()));
+      else { (subs[path]=subs[path]||[]).push(cb); cb(memGet(path)); }
+    },
+    async get(path){ return db ? (await db.ref(path).get()).val() : memGet(path); },
+    async set(path,val){ return db ? db.ref(path).set(val) : memSet(path,val); },
+    async push(path,val){
+      if(db){ const r=db.ref(path).push(); await r.set(val); return r.key; }
+      const k='k'+Date.now()+Math.floor(Math.random()*999);
+      const cur=memGet(path)||{}; cur[k]=val; memSet(path,cur); return k;
+    },
+    async remove(path){ return db ? db.ref(path).remove() : memSet(path,null); }
+  };
+})();
+function loadScript(src){
+  return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('load '+src)); document.head.appendChild(s); });
+}
+
+/* ---------- 4. Time helpers ------------------------------------
+   Times are read from the phone itself — the device clock and the device
+   timezone — so what the app shows always matches what the phone shows.
+   Every record also stores the epoch timestamp and the phone's UTC offset,
+   so a phone set to the wrong region can be spotted and corrected later. */
+const RESORT_OFFSET_MIN = 300;                       // Maldives is UTC+5, no daylight saving
+const DEVICE_TZ  = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'device';
+const deviceOff  = () => -new Date().getTimezoneOffset();   // minutes east of UTC
+const offsetOk   = () => deviceOff() === RESORT_OFFSET_MIN;
+const offTxt     = m => (m<0?'−':'+')+String(Math.floor(Math.abs(m)/60)).padStart(2,'0')+':'+String(Math.abs(m)%60).padStart(2,'0');
+
+const fmtD = new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'});
+const fmtT = new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});
+const fmtT2= new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+const fmtDL= new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'2-digit',month:'short'});
+const dstr = ts => fmtD.format(new Date(ts));
+const tstr = ts => fmtT.format(new Date(ts));
+function businessDate(ts){                 // night shift before 05:00 belongs to previous day
+  const d=new Date(ts), h=+fmtT.format(d).slice(0,2);
+  if(h<5) return fmtD.format(new Date(ts-24*3600e3));
+  return fmtD.format(d);
+}
+const minsOf = hhmm => (+hhmm.slice(0,2))*60 + (+hhmm.slice(3,5));
+const nowMins = () => minsOf(fmtT.format(new Date()));
+function hhmm(mins){ mins=((mins%1440)+1440)%1440; return String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0'); }
+function durTxt(ms){ const m=Math.round(ms/60000); return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'; }
+
+/* ---------- 5. Geo ---------- */
+function haversine(a,b,c,d){
+  const R=6371000, r=Math.PI/180;
+  const dLa=(c-a)*r, dLo=(d-b)*r;
+  const h=Math.sin(dLa/2)**2 + Math.cos(a*r)*Math.cos(c*r)*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function geoWhy(e, secs){
+  if(e.code===1) return 'Location permission is off. Allow location for this site, then try again.';
+  if(e.code===2) return 'This device cannot work out where it is. Wi-Fi-only iPads have no GPS chip — sign in on a phone, or ask your manager to set this up as a desk terminal.';
+  return 'No location fix in '+secs+' seconds. Step near a window or outside and try again.';
+}
+function getFix(timeout=15000){
+  return new Promise((res,rej)=>{
+    if(!navigator.geolocation) return rej(new Error('This device has no location service.'));
+    const ok = p => res({lat:p.coords.latitude, lng:p.coords.longitude, acc:Math.round(p.coords.accuracy||999), ts:Date.now()});
+    // Try GPS first. If that fails for any reason other than permission, fall back to
+    // the coarse network fix rather than giving up — indoors that is often all there is.
+    navigator.geolocation.getCurrentPosition(ok, e1=>{
+      if(e1.code===1) return rej(new Error(geoWhy(e1)));
+      navigator.geolocation.getCurrentPosition(ok, e2=>rej(new Error(geoWhy(e2, Math.round(timeout/1000)))),
+        {enableHighAccuracy:false, timeout:timeout, maximumAge:60000});
+    }, {enableHighAccuracy:true, timeout:timeout, maximumAge:0});
+  });
+}
+function fenceCheck(fix){
+  const z=S.zone;
+  const dist=Math.round(haversine(fix.lat,fix.lng,z.lat,z.lng));
+  const eff = z.strict ? dist+fix.acc : dist;
+  return { dist, acc:fix.acc, inside: eff<=z.radiusM, accOk: fix.acc<=z.maxAccM };
+}
+
+/* ---------- 6. State ---------- */
+const S = {
+  zone:{...DEFAULTS.zone}, rules:JSON.parse(JSON.stringify(DEFAULTS.rules)),
+  staff:[], logs:{}, session:null, fix:null, fence:null,
+  me:null, view:'staff', mgrOpen:false, today:businessDate(Date.now()), logDate:null
+};
+
+/* ---------- 7. Boot ---------- */
+(async function boot(){
+  const banner=document.getElementById('modeBanner');
+  try{
+    const live = await Store.init();
+    if(!live){ banner.classList.remove('hide'); banner.textContent='Demo mode — no Firebase project connected yet, so records clear when the page reloads. Add your config at the top of the file to go live.'; }
+  }catch(e){
+    banner.classList.remove('hide'); banner.textContent='Could not reach Firebase. Running on temporary storage — records will not be kept.';
+  }
+
+  // seed once. Demo storage returns {} for a missing node and {} is truthy, so test for emptiness.
+  const empty = v => v===null || v===undefined || (typeof v==='object' && Object.keys(v).length===0);
+  const cfg = await Store.get('config');
+  if(empty(cfg)){ await Store.set('config/zone',DEFAULTS.zone); await Store.set('config/rules',DEFAULTS.rules); }
+  else if(!cfg.zone || cfg.zone.set!==true){ await Store.set('config/zone',{...DEFAULTS.zone,...(cfg.zone||{}),lat:FO_CENTRE.lat,lng:FO_CENTRE.lng,set:true}); }
+  if(empty(await Store.get('config/rules'))) await Store.set('config/rules',DEFAULTS.rules);
+  const st = await Store.get('staff');
+  if(empty(st)){ const o={}; SEED_ROSTER.forEach(s=>{ const {id,...rest}=s; o[id]=rest; }); await Store.set('staff',o); }
+
+  Store.on('config/zone', v=>{ if(v){S.zone={...DEFAULTS.zone,...v}; paintZone(); paintGeo();} });
+  Store.on('config/rules',v=>{ if(v){S.rules={...S.rules,...v}; paintShifts(); paintRules();} });
+  Store.on('staff', v=>{ S.staff = v?Object.entries(v).map(([id,x])=>({id,...x})):[]; paintStaff(); paintRoster(); paintBoard(); });
+  Store.on('logs/'+S.today, v=>{ S.logs[S.today]=v||{}; refreshSession(); paintBoard(); paintTimeline(); paintMgrTables(); });
+
+  document.getElementById('logDate').value=S.today;
+  S.logDate=S.today;
+  document.getElementById('connTxt').innerHTML = (LIVE?'Live · Firebase Realtime Database':'Demo · temporary in-page storage') +
+    ' · ' + APP.name + ' v' + APP.version + '<br>Clock: this phone · ' + esc(DEVICE_TZ) + ' (UTC' + offTxt(deviceOff()) + ')' +
+    (offsetOk()?' · matches resort time':' · <span style="color:#A3202F">does not match resort time</span>');
+
+  tick(); setInterval(tick,1000);
+  paintShifts();
+  refreshGeo();
+  setInterval(refreshGeo, 60000);
+})();
+
+function tick(){
+  const n=Date.now();
+  document.getElementById('clk').textContent=fmtT2.format(new Date(n));
+  document.getElementById('clkd').textContent=fmtDL.format(new Date(n));
+  if(!offsetOk() && !S.tzWarned){
+    S.tzWarned=true;
+    const b=document.getElementById('modeBanner');
+    b.classList.remove('hide');
+    b.innerHTML='This phone is set to <b>'+esc(DEVICE_TZ)+'</b> (UTC'+offTxt(deviceOff())+'), not Maldives time (UTC+05:00). '+
+      'The app shows your phone clock, so your records will read '+Math.abs(Math.round((deviceOff()-RESORT_OFFSET_MIN)/60))+
+      ' hour'+(Math.abs(Math.round((deviceOff()-RESORT_OFFSET_MIN)/60))===1?'':'s')+' '+(deviceOff()>RESORT_OFFSET_MIN?'ahead of':'behind')+' the resort. Fix the date and time settings before signing in.';
+  }
+  const bd=businessDate(n);
+  if(bd!==S.today){ S.today=bd; Store.on('logs/'+bd, v=>{S.logs[bd]=v||{}; refreshSession(); paintBoard(); paintTimeline();}); }
+  paintBand();
+}
+
+/* ---------- 8. Geo painting ---------- */
+async function refreshGeo(){
+  const pill=document.getElementById('fencePill'), fix=document.getElementById('fixTxt');
+  pill.className='pill p-idle'; pill.textContent='Locating…';
+  try{
+    S.fix = await getFix();
+    S.fence = fenceCheck(S.fix);
+    fix.textContent = 'Fix taken ' + tstr(S.fix.ts);
+  }catch(e){
+    S.fix=null; S.fence=null; fix.textContent=e.message;
+  }
+  paintGeo();
+}
+function paintGeo(){
+  const ring=document.getElementById('ring'), num=document.getElementById('dialNum'),
+        unit=document.getElementById('dialUnit'), pill=document.getElementById('fencePill');
+  document.getElementById('radTxt').textContent=S.zone.radiusM;
+  if(!S.fix){ ring.setAttribute('stroke-dashoffset',283); ring.setAttribute('stroke','#B0B0B0');
+    num.textContent='—'; unit.textContent='no fix';
+    document.getElementById('accTxt').textContent='—';
+    pill.className='pill p-idle'; pill.textContent='No location'; return gate(); }
+  const f=S.fence;
+  document.getElementById('accTxt').textContent=f.acc;
+  num.textContent=f.dist; unit.textContent='m from FO';
+  const pct=Math.min(1, f.dist/(S.zone.radiusM*1.6));
+  ring.setAttribute('stroke-dashoffset', 283-(283*(1-pct)));
+  if(!f.accOk){ ring.setAttribute('stroke','#B5761B'); pill.className='pill p-warn'; pill.textContent='GPS too weak'; }
+  else if(f.inside){ ring.setAttribute('stroke','#1E7A4C'); pill.className='pill p-ok'; pill.textContent='Inside the zone'; }
+  else{ ring.setAttribute('stroke','#A3202F'); pill.className='pill p-bad'; pill.textContent='Outside the zone'; }
+  gate();
+}
+
+/* ---------- 9. Staff + shifts ---------- */
+function paintStaff(){
+  const sel=document.getElementById('staffSel'), keep=sel.value;
+  sel.innerHTML='<option value="">— select —</option>';
+  const live=S.staff.filter(s=>s.active!==false);
+  SECTIONS.forEach(sec=>{
+    const grp=live.filter(s=>sectionOf(s)===sec.label).sort((a,b)=>a.name.localeCompare(b.name));
+    if(!grp.length) return;
+    const og=document.createElement('optgroup'); og.label=sec.label;
+    grp.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.name; og.appendChild(o); });
+    sel.appendChild(og);
+  });
+  sel.value = keep && S.staff.some(s=>s.id===keep) ? keep : '';
+  refreshSession();
+}
+function paintShifts(){
+  const sel=document.getElementById('shiftSel'), keep=sel.value;
+  sel.innerHTML='';
+  S.rules.shifts.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.label+' '+s.start+'–'+s.end; sel.appendChild(o); });
+  sel.value = keep || autoShift();
+}
+function autoShift(){
+  const n=nowMins(); let best=S.rules.shifts[0], bd=1e9;
+  S.rules.shifts.forEach(s=>{ let d=Math.abs(n-minsOf(s.start)); d=Math.min(d,1440-d); if(d<bd){bd=d;best=s;} });
+  return best.id;
+}
+
+/* ---------- 10. Session logic ---------- */
+function eventsFor(staffId, date){
+  const day=S.logs[date||S.today]||{};
+  return Object.entries(day).map(([k,v])=>({k,...v})).filter(e=>e.staffId===staffId).sort((a,b)=>a.ts-b.ts);
+}
+function stateOf(evs){
+  let st='off', inAt=null, outAt=null, brkStart=null, brkMs=0, shift=null, reason=null;
+  evs.forEach(e=>{
+    if(e.type==='SIGN_IN'){ st='on'; inAt=e.ts; shift=e.shift; }
+    else if(e.type==='BREAK_START' && st==='on'){ st='break'; brkStart=e.ts; reason=e.reason; }
+    else if(e.type==='BREAK_END' && st==='break'){ st='on'; brkMs+=e.ts-brkStart; brkStart=null; reason=null; }
+    else if(e.type==='SIGN_OUT'){ if(st==='break'&&brkStart){brkMs+=e.ts-brkStart; brkStart=null;} st='done'; outAt=e.ts; }
+  });
+  return {st,inAt,outAt,brkStart,brkMs,shift,reason};
+}
+function refreshSession(){
+  const id=document.getElementById('staffSel').value;
+  S.me = S.staff.find(s=>s.id===id)||null;
+  S.session = S.me ? stateOf(eventsFor(S.me.id)) : null;
+  if(S.session && S.session.shift) document.getElementById('shiftSel').value=S.session.shift;
+  paintBand(); paintTimeline(); gate();
+}
+function paintBand(){
+  const b=document.getElementById('band'), who=document.getElementById('bandWho'),
+        st=document.getElementById('bandSt'), me=document.getElementById('bandMeta');
+  if(!S.me){ b.className='band off'; who.textContent='Select your name'; st.textContent='Not signed in'; me.textContent=''; return; }
+  who.textContent=S.me.name;
+  const s=S.session;
+  if(s.st==='off'){ b.className='band off'; st.textContent='Not signed in'; me.textContent=S.me.dept+' · '+(S.me.role||''); }
+  else if(s.st==='on'){ b.className='band on'; st.textContent='On duty since '+tstr(s.inAt);
+    me.textContent='Elapsed '+durTxt(Date.now()-s.inAt-s.brkMs)+(s.brkMs?' · breaks '+Math.round(s.brkMs/60000)+'m':''); }
+  else if(s.st==='break'){ b.className='band brk'; st.textContent='Stepped out — '+(s.reason||'break');
+    me.textContent='Out since '+tstr(s.brkStart)+' · '+Math.round((Date.now()-s.brkStart)/60000)+' min'; }
+  else{ b.className='band done'; st.textContent='Signed off at '+tstr(s.outAt);
+    me.textContent='Worked '+durTxt(s.outAt-s.inAt-s.brkMs)+' · breaks '+Math.round(s.brkMs/60000)+'m'; }
+}
+function paintTimeline(){
+  const ul=document.getElementById('myTl');
+  if(!S.me){ ul.innerHTML='<li><div class="d sub">Select your name to see today.</div></li>'; return; }
+  const evs=eventsFor(S.me.id);
+  if(!evs.length){ ul.innerHTML='<li><div class="d sub">Nothing recorded yet today.</div></li>'; return; }
+  ul.innerHTML=evs.map(e=>{
+    const cls={SIGN_IN:'d-in',SIGN_OUT:'d-out',BREAK_START:'d-brk',BREAK_END:'d-ret'}[e.type];
+    const lbl={SIGN_IN:'Signed in',SIGN_OUT:'Signed out',BREAK_START:'Stepped out',BREAK_END:'Back on duty'}[e.type];
+    return '<li><div class="t">'+tstr(e.ts)+'</div><div class="dot '+cls+'"></div><div class="d">'+
+      lbl+(e.reason?' — '+esc(e.reason):'')+
+      '<small>'+e.dist+' m from FO · GPS ±'+e.acc+' m'+(e.inside?'':' · outside zone — flagged')+(e.weak&&e.inside?' · weak GPS — flagged':'')+'</small></div></li>';
+  }).join('');
+}
+
+/* ---------- 11. Gate the buttons ---------- */
+function gate(){
+  // A location fix is required. Being outside the circle is allowed — it records as an exception.
+  const ok = !!S.fix && !!S.fence;
+  const s = S.session, has=!!S.me;
+  const set=(id,on)=>document.getElementById(id).disabled=!on;
+  set('aSignIn',  has && ok && (!s || s.st==='off'));
+  set('aBreakOut',has && ok && s && s.st==='on');
+  set('aBreakIn', has && ok && s && s.st==='break');
+  set('aSignOut', has && ok && s && (s.st==='on'||s.st==='break'));
+  const flagged = ok && (!S.fence.inside || !S.fence.accOk);
+  document.getElementById('aSignIn').textContent = flagged ? 'Sign in — will be flagged' : 'Sign in — start shift';
+  document.getElementById('exNote').classList.toggle('hide', !flagged);
+}
+
+/* ---------- 12. Recording ---------- */
+async function record(type, reason){
+  if(!S.me) return toast('Select your name first.');
+  const pin=document.getElementById('pinIn').value.trim();
+  if((S.me.pin||'')!==pin) return toast('That PIN does not match. Try again.');
+  toast('Checking your location…');
+  let fix;
+  try{ fix=await getFix(); }catch(e){ return toast(e.message); }
+  S.fix=fix; S.fence=fenceCheck(fix); paintGeo();
+
+  const flagged = !S.fence.inside || !S.fence.accOk;
+  if(flagged){
+    const go = await confirmException(type, S.fence);
+    if(!go) return;
+  }
+
+  const shift=document.getElementById('shiftSel').value;
+  const ts=Date.now();
+  const entry={ staffId:S.me.id, name:S.me.name, dept:S.me.dept, role:S.me.role||'', shift, type, ts,
+                lat:+fix.lat.toFixed(6), lng:+fix.lng.toFixed(6), acc:fix.acc,
+                dist:S.fence.dist, inside:S.fence.inside, weak:!S.fence.accOk,
+                tzOff:deviceOff(), tz:DEVICE_TZ };
+  if(reason) entry.reason=reason;
+  if(type==='SIGN_IN'){
+    const sh=S.rules.shifts.find(x=>x.id===shift);
+    const late=nowMins()-(minsOf(sh.start)+ (sh.graceMin||0));
+    entry.lateMin = late>0?late:0;
+  }
+  await Store.push('logs/'+businessDate(ts), entry);
+  document.getElementById('pinIn').value='';
+  const msg={SIGN_IN:'Signed in',SIGN_OUT:'Signed out',BREAK_START:'Stepped out',BREAK_END:'Back on duty'}[type];
+  toast(msg+' at '+tstr(ts)+' · '+S.fence.dist+' m from FO'+(flagged?' · flagged for the manager':''));
+  refreshSession();
+}
+
+/* Outside the circle, or a weak fix: record it, but make the person acknowledge it first. */
+function confirmException(type, f){
+  return new Promise(res=>{
+    const what={SIGN_IN:'sign-in',SIGN_OUT:'sign-out',BREAK_START:'step-out',BREAK_END:'return'}[type];
+    const lines=[];
+    if(!f.inside) lines.push('You are <b>'+f.dist+' m</b> from the Front Office desk. The zone is '+S.zone.radiusM+' m wide.');
+    if(!f.accOk)  lines.push('Your phone can only place you to within <b>&plusmn;'+f.acc+' m</b>, above the '+S.zone.maxAccM+' m limit.');
+    sheet('This will be flagged',
+      '<p class="sub">'+lines.join(' ')+'</p>'+
+      '<p class="sub">The '+what+' still gets recorded with the time and your exact position, and it appears on the manager exception list for today.</p>'+
+      '<button class="btn" id="exGo" style="margin-top:12px;background:#B5761B">Record it anyway</button>',
+      h=>{ h.querySelector('#exGo').onclick=()=>{ closeSheet(); res(true); }; },
+      ()=>res(false)
+    );
+  });
+}
+
+/* ---------- 13. Board ---------- */
+function paintBoard(){
+  const day=S.logs[S.today]||{};
+  const byId={};
+  Object.values(day).forEach(e=>{ (byId[e.staffId]=byId[e.staffId]||[]).push(e); });
+  const on=[],brk=[],off=[],exc=[];
+  Object.entries(byId).forEach(([id,evs])=>{
+    evs.sort((a,b)=>a.ts-b.ts);
+    const st=stateOf(evs), nm=evs[0].name, dp=evs[0].dept;
+    const row=(sub,tag)=>({nm,dp,sub,tag});
+    if(st.st==='on') on.push(row('In at '+tstr(st.inAt)+' · '+durTxt(Date.now()-st.inAt-st.brkMs), st.shift||''));
+    else if(st.st==='break') brk.push(row('Out since '+tstr(st.brkStart)+' — '+(st.reason||'break')+' · '+Math.round((Date.now()-st.brkStart)/60000)+' min', st.shift||''));
+    else if(st.st==='done') off.push(row(tstr(st.inAt)+' → '+tstr(st.outAt)+' · '+durTxt(st.outAt-st.inAt-st.brkMs), st.shift||''));
+    flagsFor(st,evs).forEach(f=>exc.push(row(f,'')));
+  });
+  const draw=(el,arr,empty)=>{
+    const box=document.getElementById(el);
+    if(!arr.length){ box.innerHTML='<p class="sub">'+empty+'</p>'; return; }
+    box.innerHTML=arr.map(r=>'<div class="rowitem"><div class="nm"><b>'+esc(r.nm)+'</b><small>'+esc(r.dp)+' · '+esc(r.sub)+'</small></div>'+(r.tag?'<span class="tag">'+esc(r.tag).toUpperCase()+'</span>':'')+'</div>').join('');
+  };
+  draw('boardOn',on,'Nobody signed in.');
+  draw('boardBrk',brk,'Nobody out.');
+  draw('boardOff',off,'No completed shifts yet.');
+  draw('boardExc',exc,'Nothing to review.');
+}
+function flagsFor(st,evs){
+  const f=[];
+  const sh=S.rules.shifts.find(x=>x.id===st.shift)||S.rules.shifts[0];
+  const first=evs.find(e=>e.type==='SIGN_IN');
+  if(first && first.lateMin>0) f.push('Late sign-in by '+first.lateMin+' min (shift '+sh.start+')');
+  if(st.st==='break' && st.brkStart && (Date.now()-st.brkStart)/60000 > S.rules.breakMaxMin)
+    f.push('Break over '+S.rules.breakMaxMin+' min and still out');
+  if(st.brkMs/60000 > S.rules.breakTotalMin) f.push('Total breaks '+Math.round(st.brkMs/60000)+' min, above '+S.rules.breakTotalMin);
+  if(st.st==='done' && st.outAt){
+    const out=minsOf(tstr(st.outAt)), lim=minsOf(sh.latestOut||'22:00');
+    if(sh.id!=='night' && out>lim) f.push('Signed out '+(out-lim)+' min after '+sh.latestOut);
+  }
+  if((st.st==='on'||st.st==='break') && st.inAt){
+    const lim=minsOf(sh.latestOut||'22:00'), n=nowMins();
+    if(sh.id!=='night' && n>lim) f.push('Still open past '+sh.latestOut+' — no sign-out recorded');
+  }
+  const L={SIGN_IN:'Sign-in',SIGN_OUT:'Sign-out',BREAK_START:'Step-out',BREAK_END:'Return'};
+  evs.filter(e=>!e.inside).forEach(e=>f.push(L[e.type]+' at '+tstr(e.ts)+' taken '+e.dist+' m outside the zone'));
+  evs.filter(e=>e.weak&&e.inside).forEach(e=>f.push(L[e.type]+' at '+tstr(e.ts)+' taken on weak GPS (±'+e.acc+' m)'));
+  evs.filter(e=>e.tzOff!==undefined && e.tzOff!==RESORT_OFFSET_MIN)
+     .forEach(e=>f.push(L[e.type]+' at '+tstr(e.ts)+' from a phone set to UTC'+offTxt(e.tzOff)+', not Maldives time'));
+  return f;
+}
+
+/* ---------- 14. Manager tables ---------- */
+async function loadLogDate(d){
+  S.logDate=d;
+  if(!S.logs[d]) S.logs[d]= (await Store.get('logs/'+d))||{};
+  paintMgrTables();
+}
+function summaryRows(date){
+  const day=S.logs[date]||{}, byId={};
+  Object.values(day).forEach(e=>{ (byId[e.staffId]=byId[e.staffId]||[]).push(e); });
+  return Object.values(byId).map(evs=>{
+    evs.sort((a,b)=>a.ts-b.ts);
+    const st=stateOf(evs);
+    const worked = st.inAt ? ((st.outAt||Date.now())-st.inAt-st.brkMs) : 0;
+    return { name:evs[0].name, dept:evs[0].dept, shift:st.shift||'',
+      inAt:st.inAt?tstr(st.inAt):'—', outAt:st.outAt?tstr(st.outAt):(st.st==='off'?'—':'open'),
+      brk:Math.round(st.brkMs/60000), hrs:(worked/3600000).toFixed(2), flags:flagsFor(st,evs) };
+  }).sort((a,b)=>a.name.localeCompare(b.name));
+}
+function paintMgrTables(){
+  const d=S.logDate||S.today;
+  const sb=document.querySelector('#tblSum tbody');
+  const rows=summaryRows(d);
+  sb.innerHTML = rows.length ? rows.map(r=>'<tr><td><b>'+esc(r.name)+'</b><br><small style="color:#6B6B6B">'+esc(r.dept)+' · '+esc(r.shift)+'</small></td><td>'+r.inAt+'</td><td>'+r.outAt+'</td><td>'+r.brk+'m</td><td>'+r.hrs+'</td><td>'+(r.flags.length?'<span style="color:#A3202F">'+r.flags.map(esc).join('<br>')+'</span>':'—')+'</td></tr>').join('')
+    : '<tr><td colspan="6" class="sub">No records for this date.</td></tr>';
+  const lb=document.querySelector('#tblLog tbody');
+  const evs=Object.values(S.logs[d]||{}).sort((a,b)=>b.ts-a.ts);
+  const L={SIGN_IN:'Sign in',SIGN_OUT:'Sign out',BREAK_START:'Step out',BREAK_END:'Back on'};
+  lb.innerHTML = evs.length ? evs.map(e=>'<tr><td>'+tstr(e.ts)+'</td><td>'+esc(e.name)+'</td><td>'+L[e.type]+(e.reason?'<br><small style="color:#6B6B6B">'+esc(e.reason)+'</small>':'')+'</td><td'+(e.inside?'':' style="color:#A3202F;font-weight:700"')+'>'+e.dist+' m</td><td'+(e.weak?' style="color:#B5761B;font-weight:700"':'')+'>±'+e.acc+'</td></tr>').join('')
+    : '<tr><td colspan="5" class="sub">No movements logged.</td></tr>';
+}
+function csv(rows){ return rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n'); }
+function download(name, text){
+  const b=new Blob([ '\ufeff'+text ],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+
+/* ---------- 15. Roster / zone / rules panels ---------- */
+function paintRoster(){
+  const box=document.getElementById('rosterList');
+  const q=(document.getElementById('rSearch')?.value||'').toLowerCase().trim();
+  const show=document.getElementById('rShowPin')?.checked;
+  const filled=S.staff.length, live=S.staff.filter(s=>s.active!==false).length;
+  const head='<div class="banner" style="background:#EDF2F4;border-color:#CBD8DE;color:#183B4F">'+
+    '<b>'+(filled+VACANCIES.length)+'</b> budgeted positions · <b>'+filled+'</b> named · <b>'+live+'</b> able to sign in · <b>'+VACANCIES.length+'</b> vacant</div>';
+  if(!S.staff.length){ box.innerHTML=head+'<p class="sub">Roster is empty. Add your team above, or import the Front Office establishment.</p>'+vacHtml(); return; }
+  let html=head;
+  SECTIONS.forEach(sec=>{
+    const grp=S.staff.filter(s=>sectionOf(s)===sec.label)
+      .filter(s=>!q || (s.name+' '+(s.role||'')+' '+(s.nat||'')).toLowerCase().includes(q))
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    if(!grp.length) return;
+    html+='<div style="margin:14px 0 2px"><b class="serif" style="color:var(--maroon)">'+sec.label+'</b> <span class="tag">'+grp.length+'</span></div>';
+    html+=grp.map(s=>{
+      const off=s.active===false;
+      return '<div class="rowitem"'+(off?' style="opacity:.55"':'')+'>'+
+        '<div class="nm"><b>'+esc(s.name)+'</b><small>'+esc(s.role||'')+' · '+esc(s.dept||'')+
+        (s.nat?' · '+esc(s.nat):'')+' · PIN '+(show?esc(s.pin||''):'••••')+
+        (off?' · <span style="color:#B5761B">paused'+(s.note?' — '+esc(s.note):'')+'</span>':'')+'</small></div>'+
+        '<button class="btn ghost sm" style="width:auto;padding:6px 10px" data-edit="'+s.id+'">Edit</button>'+
+        '<button class="btn ghost sm" style="width:auto;padding:6px 10px" data-tog="'+s.id+'">'+(off?'Activate':'Pause')+'</button>'+
+      '</div>';
+    }).join('');
+  });
+  box.innerHTML=html+vacHtml();
+}
+function vacHtml(){
+  return '<div style="margin:16px 0 2px"><b class="serif" style="color:var(--muted)">Vacant positions</b></div>'+
+    VACANCIES.map(v=>'<div class="rowitem" style="opacity:.7"><div class="nm"><b>'+esc(v.role)+'</b><small>Band '+v.band+' · '+esc(v.note)+' · not on the sign-in list</small></div></div>').join('');
+}
+function openStaffEdit(id){
+  const s=S.staff.find(x=>x.id===id); if(!s) return;
+  sheet('Edit '+s.name,
+    '<label class="lbl">Full name</label><input id="eName" value="'+esc(s.name)+'">'+
+    '<label class="lbl" style="margin-top:10px">Position</label><input id="eRole" value="'+esc(s.role||'')+'">'+
+    '<div class="row" style="margin-top:10px">'+
+      '<div><label class="lbl">Department</label><select id="eDept">'+
+        ['FO 101','HK 102','RSV 103'].map(d=>'<option'+(s.dept===d?' selected':'')+'>'+d+'</option>').join('')+'</select></div>'+
+      '<div><label class="lbl">PIN</label><input id="ePin" inputmode="numeric" maxlength="4" value="'+esc(s.pin||'')+'"></div>'+
+    '</div>'+
+    '<div class="row" style="margin-top:10px">'+
+      '<div><label class="lbl">Nationality</label><input id="eNat" value="'+esc(s.nat||'')+'"></div>'+
+      '<div><label class="lbl">Salary band</label><input id="eBand" inputmode="numeric" value="'+esc(s.band||'')+'"></div>'+
+    '</div>'+
+    '<button class="btn" id="eSave" style="margin-top:12px">Save changes</button>'+
+    '<button class="btn ghost" id="eDel" style="margin-top:8px;color:#A3202F">Remove from roster</button>',
+    h=>{
+      h.querySelector('#eSave').onclick=async()=>{
+        const p=h.querySelector('#ePin').value.trim();
+        if(!/^\d{4}$/.test(p)) return toast('PIN must be 4 digits.');
+        const nm=h.querySelector('#eName').value.trim();
+        if(!nm) return toast('Name cannot be empty.');
+        await Store.set('staff/'+id,{ ...s, name:nm, role:h.querySelector('#eRole').value.trim(),
+          dept:h.querySelector('#eDept').value, pin:p, nat:h.querySelector('#eNat').value.trim(),
+          band:parseInt(h.querySelector('#eBand').value)||s.band||0 });
+        closeSheet(); toast('Saved.');
+      };
+      h.querySelector('#eDel').onclick=async()=>{
+        await Store.remove('staff/'+id); closeSheet(); toast(s.name+' removed. Past records stay in the log.');
+      };
+    });
+}
+function paintZone(){
+  document.getElementById('zLat').value=S.zone.lat;
+  document.getElementById('zLng').value=S.zone.lng;
+  document.getElementById('zRad').value=S.zone.radiusM;
+  document.getElementById('zAcc').value=S.zone.maxAccM;
+  document.getElementById('zStrict').value=S.zone.strict?1:0;
+  const off = Math.round(haversine(S.zone.lat,S.zone.lng,FO_CENTRE.lat,FO_CENTRE.lng));
+  const el=document.getElementById('zNow');
+  if(el) el.innerHTML='Centre in use: <b>'+S.zone.lat.toFixed(6)+', '+S.zone.lng.toFixed(6)+'</b> · radius '+S.zone.radiusM+' m'+
+    (off>5 ? ' · <span style="color:#B5761B">'+off+' m from the recorded Front Office point</span>' : ' · matches the recorded Front Office point');
+}
+function paintRules(){
+  const box=document.getElementById('shiftRules');
+  box.innerHTML=S.rules.shifts.map((s,i)=>
+    '<div style="border-bottom:1px solid var(--line);padding:10px 0">'+
+    '<b class="serif">'+esc(s.label)+'</b>'+
+    '<div class="grid3" style="margin-top:6px">'+
+      '<div><label class="lbl">Start</label><input type="time" data-ru="'+i+'" data-f="start" value="'+s.start+'"></div>'+
+      '<div><label class="lbl">End</label><input type="time" data-ru="'+i+'" data-f="end" value="'+s.end+'"></div>'+
+      '<div><label class="lbl">Latest out</label><input type="time" data-ru="'+i+'" data-f="latestOut" value="'+(s.latestOut||'22:00')+'"></div>'+
+    '</div>'+
+    '<div style="margin-top:6px"><label class="lbl">Grace (min)</label><input inputmode="numeric" data-ru="'+i+'" data-f="graceMin" value="'+(s.graceMin||0)+'"></div>'+
+    '</div>').join('');
+  document.getElementById('brkMax').value=S.rules.breakMaxMin;
+  document.getElementById('brkTot').value=S.rules.breakTotalMin;
+  document.getElementById('mgrPinNew').value=S.rules.mgrPin;
+}
+
+/* ---------- 16. UI plumbing ---------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let toastT;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.remove('hide');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.add('hide'),3400);
+}
+function sheet(title, bodyHtml, onMount, onClose){
+  const host=document.getElementById('modalHost');
+  host.innerHTML='<div class="mask"><div class="sheet"><h3>'+esc(title)+'</h3>'+bodyHtml+
+    '<button class="btn ghost" id="shClose" style="margin-top:12px">Cancel</button></div></div>';
+  const shut=()=>{ host.innerHTML=''; if(onClose) onClose(); };
+  host.querySelector('.mask').addEventListener('click',e=>{ if(e.target.classList.contains('mask')) shut(); });
+  document.getElementById('shClose').onclick=shut;
+  if(onMount) onMount(host);
+}
+const closeSheet=()=>document.getElementById('modalHost').innerHTML='';
+
+document.querySelectorAll('nav.bot button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav.bot button').forEach(x=>x.classList.toggle('on',x===b));
+  ['staff','board','mgr'].forEach(v=>document.getElementById('v-'+v).classList.toggle('hide', v!==b.dataset.v));
+  if(b.dataset.v==='board') paintBoard();
+});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  ['log','roster','zone','rules'].forEach(t=>document.getElementById('mt-'+t).classList.toggle('hide',t!==b.dataset.mt));
+});
+
+document.getElementById('btnRefresh').onclick=refreshGeo;
+document.getElementById('staffSel').onchange=refreshSession;
+document.getElementById('pinChange').onclick=()=>{
+  if(!S.me) return toast('Select your name first.');
+  sheet('Change PIN — '+S.me.name,
+    '<label class="lbl">Current PIN</label><input id="p0" type="password" inputmode="numeric" maxlength="4">'+
+    '<label class="lbl" style="margin-top:10px">New PIN</label><input id="p1" type="password" inputmode="numeric" maxlength="4">'+
+    '<label class="lbl" style="margin-top:10px">Repeat new PIN</label><input id="p2" type="password" inputmode="numeric" maxlength="4">'+
+    '<button class="btn" id="pGo" style="margin-top:12px">Save new PIN</button>',
+    h=>h.querySelector('#pGo').onclick=async()=>{
+      const a=h.querySelector('#p0').value.trim(), b=h.querySelector('#p1').value.trim(), c=h.querySelector('#p2').value.trim();
+      if(a!==(S.me.pin||'')) return toast('Current PIN does not match.');
+      if(!/^\d{4}$/.test(b)) return toast('New PIN must be 4 digits.');
+      if(b!==c) return toast('The two new PINs are different.');
+      if(S.staff.some(s=>s.id!==S.me.id && s.pin===b)) return toast('That PIN is taken. Pick another.');
+      await Store.set('staff/'+S.me.id+'/pin', b);
+      closeSheet(); toast('PIN changed.');
+    });
+};
+
+document.getElementById('aSignIn').onclick=()=>record('SIGN_IN');
+document.getElementById('aSignOut').onclick=()=>{
+  sheet('End of shift','<p class="sub">This closes your day. If you are still out on a break it will be closed too.</p>'+
+    '<button class="btn" id="soGo" style="margin-top:12px">Sign out now</button>',
+    h=>h.querySelector('#soGo').onclick=()=>{ closeSheet(); record('SIGN_OUT'); });
+};
+document.getElementById('aBreakOut').onclick=()=>{
+  const reasons=['Lunch','Dinner','Tea break','Prayer','Duty errand on property','Other'];
+  sheet('Stepping out','<label class="lbl">Reason</label><div class="grid2" id="rsG">'+
+    reasons.map(r=>'<button class="btn ghost sm" data-r="'+r+'">'+r+'</button>').join('')+'</div>',
+    h=>h.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{ closeSheet(); record('BREAK_START', b.dataset.r); }));
+};
+document.getElementById('aBreakIn').onclick=()=>record('BREAK_END');
+
+/* Manager unlock */
+document.getElementById('mgrGo').onclick=()=>{
+  if(document.getElementById('mgrPin').value.trim()!==String(S.rules.mgrPin)) return toast('Manager PIN does not match.');
+  S.mgrOpen=true;
+  document.getElementById('mgrLock').classList.add('hide');
+  document.getElementById('mgrBody').classList.remove('hide');
+  paintZone(); paintRules(); paintRoster(); paintMgrTables();
+};
+document.getElementById('logDate').onchange=e=>loadLogDate(e.target.value);
+document.getElementById('btnCsvLog').onclick=()=>{
+  const d=S.logDate||S.today;
+  const rows=[['Date','Time','Name','Department','Role','Shift','Event','Reason','Latitude','Longitude','Distance m','Accuracy m','Inside zone','Phone timezone','UTC offset','Exception']];
+  Object.values(S.logs[d]||{}).sort((a,b)=>a.ts-b.ts).forEach(e=>{
+    const ex = !e.inside ? 'OUTSIDE ZONE' : (e.weak ? 'WEAK GPS' : '');
+    rows.push([d,tstr(e.ts),e.name,e.dept,e.role,e.shift,e.type,e.reason||'',e.lat,e.lng,e.dist,e.acc,e.inside?'YES':'NO',e.tz||'',e.tzOff!==undefined?offTxt(e.tzOff):'',ex]);
+  });
+  download('CGLM_DutyLog_'+d+'.csv', csv(rows));
+};
+document.getElementById('btnCsvSum').onclick=()=>{
+  const d=S.logDate||S.today;
+  const rows=[['Date','Name','Department','Shift','Sign in','Sign out','Break min','Hours','Flags']];
+  summaryRows(d).forEach(r=>rows.push([d,r.name,r.dept,r.shift,r.inAt,r.outAt,r.brk,r.hrs,r.flags.join(' | ')]));
+  download('CGLM_Attendance_'+d+'.csv', csv(rows));
+};
+
+/* Roster actions */
+document.getElementById('rAdd').onclick=async()=>{
+  const n=document.getElementById('rName').value.trim(), p=document.getElementById('rPin').value.trim();
+  if(!n) return toast('Enter a name.');
+  if(!/^\d{4}$/.test(p)) return toast('PIN must be 4 digits.');
+  if(S.staff.some(s=>s.name.toLowerCase()===n.toLowerCase())) return toast(n+' is already on the roster.');
+  if(S.staff.some(s=>s.pin===p)) return toast('That PIN is already in use. Pick another.');
+  const id='s'+Date.now();
+  await Store.set('staff/'+id,{ name:n, dept:document.getElementById('rDept').value,
+    role:document.getElementById('rRole').value.trim(), nat:document.getElementById('rNat').value.trim(),
+    band:parseInt(document.getElementById('rBand').value)||10, pin:p, active:true });
+  ['rName','rPin','rRole','rNat','rBand'].forEach(i=>document.getElementById(i).value='');
+  toast(n+' added to the roster.');
+};
+document.getElementById('rosterList').addEventListener('click', async e=>{
+  const t=e.target.closest('[data-tog]'), ed=e.target.closest('[data-edit]');
+  if(ed) return openStaffEdit(ed.dataset.edit);
+  if(t){ const s=S.staff.find(x=>x.id===t.dataset.tog); await Store.set('staff/'+s.id+'/active', s.active===false); }
+});
+document.getElementById('rSearch').oninput=paintRoster;
+document.getElementById('rShowPin').onchange=paintRoster;
+document.getElementById('rImport').onclick=async()=>{
+  const have=new Set(S.staff.map(s=>s.name.toLowerCase()));
+  const add=SEED_ROSTER.filter(s=>!have.has(s.name.toLowerCase()));
+  if(!add.length) return toast('Every name on the establishment is already on the roster.');
+  sheet('Import Front Office roster',
+    '<p class="sub">'+add.length+' name'+(add.length>1?'s':'')+' from the 2026 manning list '+(add.length>1?'are':'is')+' missing. Existing entries and their PINs are left untouched.</p>'+
+    '<p class="sub" style="margin-top:8px">'+add.map(s=>esc(s.name)).join(' · ')+'</p>'+
+    '<button class="btn" id="impGo" style="margin-top:12px">Add '+add.length+' to the roster</button>',
+    h=>h.querySelector('#impGo').onclick=async()=>{
+      for(const s of add){ const {id,...rest}=s; await Store.set('staff/'+id, rest); }
+      closeSheet(); toast(add.length+' added.');
+    });
+};
+
+/* Zone actions */
+document.getElementById('zSet').onclick=async()=>{
+  toast('Taking a fix…');
+  try{
+    const f=await getFix();
+    document.getElementById('zLat').value=f.lat.toFixed(6);
+    document.getElementById('zLng').value=f.lng.toFixed(6);
+    toast('Centre captured at ±'+f.acc+' m. Press Save zone.');
+  }catch(e){ toast(e.message); }
+};
+document.getElementById('zReset').onclick=()=>{
+  document.getElementById('zLat').value=FO_CENTRE.lat.toFixed(6);
+  document.getElementById('zLng').value=FO_CENTRE.lng.toFixed(6);
+  toast('Front Office point loaded. Press Save zone to apply.');
+};
+document.getElementById('zSave').onclick=async()=>{
+  const z={ lat:parseFloat(document.getElementById('zLat').value), lng:parseFloat(document.getElementById('zLng').value),
+    radiusM:Math.max(20,parseInt(document.getElementById('zRad').value)||120),
+    maxAccM:Math.max(15,parseInt(document.getElementById('zAcc').value)||75),
+    strict:+document.getElementById('zStrict').value, set:true };
+  if(isNaN(z.lat)||isNaN(z.lng)) return toast('Latitude and longitude must be numbers.');
+  await Store.set('config/zone',z);
+  document.getElementById('modeBanner').classList.add('hide');
+  toast('Zone saved · '+z.radiusM+' m radius'); refreshGeo();
+};
+
+/* Rules actions */
+document.getElementById('ruSave').onclick=async()=>{
+  const sh=JSON.parse(JSON.stringify(S.rules.shifts));
+  document.querySelectorAll('[data-ru]').forEach(i=>{
+    const s=sh[+i.dataset.ru], f=i.dataset.f;
+    s[f] = f==='graceMin' ? (parseInt(i.value)||0) : i.value;
+  });
+  await Store.set('config/rules/shifts',sh);
+  toast('Shift windows saved.'); paintShifts();
+};
+/* ---------- 17. Installable app ---------- */
+const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let deferredPrompt = null;
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').then(reg=>{
+      reg.addEventListener('updatefound', ()=>{
+        const w = reg.installing;
+        w && w.addEventListener('statechange', ()=>{
+          if(w.state === 'installed' && navigator.serviceWorker.controller){
+            sheet('A new version is ready',
+              '<p class="sub">Reload to pick up the latest version. Nothing you have recorded is affected.</p>'+
+              '<button class="btn" id="swGo" style="margin-top:12px">Reload now</button>',
+              h=>h.querySelector('#swGo').onclick=()=>{ w.postMessage('skipWaiting'); location.reload(); });
+          }
+        });
+      });
+    }).catch(()=>{});
+  });
+}
+
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt = e;
+  if(!standalone()) document.getElementById('btnInstall').classList.remove('hide');
+});
+window.addEventListener('appinstalled', ()=>{
+  deferredPrompt = null;
+  document.getElementById('btnInstall').classList.add('hide');
+  toast('Duty Log installed. Open it from your home screen.');
+});
+if(isIOS() && !standalone()) document.getElementById('btnInstall').classList.remove('hide');
+
+document.getElementById('btnInstall').onclick=async()=>{
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    const {outcome} = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if(outcome === 'accepted') document.getElementById('btnInstall').classList.add('hide');
+    return;
+  }
+  sheet('Add Duty Log to your home screen',
+    (isIOS()
+      ? '<p class="sub">In Safari, tap the <b>Share</b> button at the bottom of the screen, scroll down, and choose <b>Add to Home Screen</b>. Then open Duty Log from the icon rather than from Safari.</p>'+
+        '<p class="sub" style="margin-top:8px">It has to be Safari. Chrome and Firefox on iPhone and iPad cannot add apps to the home screen.</p>'
+      : '<p class="sub">Open your browser menu and choose <b>Install app</b> or <b>Add to Home screen</b>.</p>')+
+    '<p class="sub" style="margin-top:8px">Once installed it opens full screen, keeps working when the connection drops, and remembers your location permission.</p>');
+};
+
+function paintNet(){
+  const d=document.getElementById('netDot');
+  d.textContent = navigator.onLine ? '' : ' · offline';
+  if(!navigator.onLine){
+    const b=document.getElementById('modeBanner');
+    b.classList.remove('hide');
+    b.textContent='No connection. The app still opens, but sign-ins cannot be saved until you are back online — do not assume a record went through.';
+  }
+}
+window.addEventListener('online', ()=>{ paintNet(); toast('Back online.'); });
+window.addEventListener('offline', paintNet);
+paintNet();
+
+if(location.hash==='#board') document.querySelector('nav.bot button[data-v="board"]').click();
+
+document.getElementById('brkSave').onclick=async()=>{
+  await Store.set('config/rules/breakMaxMin',parseInt(document.getElementById('brkMax').value)||60);
+  await Store.set('config/rules/breakTotalMin',parseInt(document.getElementById('brkTot').value)||90);
+  const p=document.getElementById('mgrPinNew').value.trim();
+  if(/^\d{4,6}$/.test(p)) await Store.set('config/rules/mgrPin',p);
+  toast('Saved.');
+};
+</script>
+</body>
+</html>
